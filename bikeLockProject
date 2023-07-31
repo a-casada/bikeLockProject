@@ -1,0 +1,129 @@
+# Code for the stepper motor was created using code from https://microcontrollerslab.com/28byj-48-stepper-motor-raspberry-pi-pico-micropython/.
+# Code for using the keypad was created using ideas from https://peppe8o.com/use-matrix-keypad-with-raspberry-pi-pico-to-get-user-codes-input/.
+
+from machine import Pin
+from time import sleep
+import time
+
+# Sets the rows and columns for the pins of the matrix keypad.
+R_PINS = [Pin(4), Pin(3), Pin(2), Pin(1)]
+C_PINS = [Pin(7), Pin(6), Pin(5)]
+
+# Defines the LEDs, led1 is the green LED and led2 is the red LED.
+led1 = Pin(16, Pin.OUT)
+led2 = Pin(17, Pin.OUT)
+
+# Sets the values that should be used for each row and column.
+KEY_VALUES =
+{
+    (0, 0): '1', (0, 1): '2', (0, 2): '3',
+    (1, 0): '4', (1, 1): '5', (1, 2): '6',
+    (2,0):  '7', (2, 1): '8', (2, 2): '9',
+    (3, 0): 'C', (3, 1): '0', (3, 2): 'E',
+}
+
+# Defines pins that control the stepper motor.
+Input1 = Pin(10, Pin.OUT)
+Input2 = Pin(11, Pin.OUT)
+Input3 = Pin(12, Pin.OUT)
+Input4 = Pin(13, Pin.OUT)
+pins = [Input1, Input2, Input3, Input4]
+
+# Sets the pins in the rows as outputs and sets them high.
+for r_pin in R_PINS:
+    r_pin.init(mode=Pin.OUT)
+    r_pin.value(1)
+
+# Sets the pins in the columns as outputs and sets up code to work with the 10kOhm resistors.
+for col_pin in C_PINS:
+    col_pin.init(mode=Pin.IN, pull=Pin.PULL_UP)
+
+# This scans the keypad to see if a button was pressed.
+def scan_the_keypad():
+    # Goes through the rows of the keypad
+    for row_num, r_pin in enumerate(r_pinS):
+        # Has the value of 0 when the button is pressed.
+        r_pin.value(0)
+
+        # Goes through the rows of the keypad
+        for col_num, col_pin in enumerate(C_PINS):
+            if not col_pin.value():
+                # 0.2 second delay, so multiple key presses are not detected when the user presses once.
+                sleep(0.2)
+
+                # Checks to see if the key is not pressed anymore and returns the value.
+                if not col_pin.value():
+                    return KEY_VALUES[(row_num, col_num)]
+        r_pin.value(1)
+    return None
+
+# This is the main loop of the program.
+password = ""
+user_input = ""
+while True:
+    key = scan_the_keypad()
+    if key:
+        print('Key pressed:', key)
+        
+        if key != "C" and key != "E":
+            # green LED on to let the user know they pressed the key 
+            led1.value(1)
+            time.sleep(1)
+            led1.value(0)
+        # If the key pressed is "C" the user_input will be reset.
+        if key == "C":
+            user_input = ""
+            
+        # If the user presses "E" for enter and there is no password.
+        elif key == "E" and len(user_input) == 4 and password == "":
+            password = user_input;
+            user_input = ""
+            print("lock")
+            
+            # green LED on
+            led1.value(1)
+            time.sleep(1)
+            led1.value(0)
+            
+            locking_sequence = [[0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+            steps = 0
+            
+            # 1800 stepper motor steps for lock the system
+            while steps < 1800:
+                for step in locking_sequence:
+                    for i in range(len(pins)):
+                        pins[i].value(step[i])
+                        sleep(0.001)
+                    steps += 1
+        
+        # If the password is correct and the user presses "E".
+        elif key == "E" and len(user_input) == 4 and user_input == password:
+            user_input = ""
+            password = ""
+            
+            # green LED on 
+            led1.value(1)
+            time.sleep(1)
+            led1.value(0)
+            
+            unlocking_sequence = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+            steps = 0
+            
+            # 1800 stepper motor steps for lock the system
+            while steps < 1800:
+                for step in unlocking_sequence:
+                    for i in range(len(pins)):
+                        pins[i].value(step[i])
+                        sleep(0.001)
+                    steps += 1
+                    
+        # If the code entered is incorrect.
+        elif key == "E" and len(user_input) == 4 and user_input != password:
+            led2.value(1)
+            time.sleep(1)
+            led2.value(0)
+        elif len(user_input) < 4:
+            user_input += key
+        
+        # prints code for testing
+        print('Keypad Input:', user_input)
